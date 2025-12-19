@@ -1,1 +1,641 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>NovaAI</title>
+  <style>
+    :root{
+      --bg:#050607;
+      --panel:#0b0d10cc;
+      --panel2:#0b0d10;
+      --text:#f6f7f8;
+      --muted:#a7adb4;
+      --line:#1b1f25;
+      --glow:#ffffff22;
+      --shadow: 0 18px 50px rgba(0,0,0,.55);
+      --radius: 18px;
+    }
 
+    *{ box-sizing:border-box; }
+    body{
+      margin:0;
+      font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial;
+      background:
+        radial-gradient(1200px 800px at 20% 10%, #11182755 0%, transparent 55%),
+        radial-gradient(900px 600px at 80% 30%, #ffffff12 0%, transparent 60%),
+        linear-gradient(180deg, #000, var(--bg));
+      color:var(--text);
+      min-height:100vh;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      padding:18px;
+      overflow-x:hidden;
+    }
+
+    /* subtle moving grain */
+    body::before{
+      content:"";
+      position:fixed; inset:-60px;
+      background:
+        url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='260' height='260'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='260' height='260' filter='url(%23n)' opacity='.15'/%3E%3C/svg%3E");
+      mix-blend-mode: overlay;
+      opacity:.25;
+      pointer-events:none;
+      animation: float 8s ease-in-out infinite;
+    }
+    @keyframes float{
+      0%,100%{ transform: translate3d(0,0,0); }
+      50%{ transform: translate3d(18px,-12px,0); }
+    }
+
+    .app{
+      width:min(980px, 100%);
+      display:grid;
+      grid-template-columns: 320px 1fr;
+      gap:14px;
+    }
+
+    @media (max-width: 860px){
+      .app{ grid-template-columns: 1fr; }
+    }
+
+    .card{
+      background: linear-gradient(180deg, #0b0d10ee, #07080aee);
+      border:1px solid var(--line);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(10px);
+      overflow:hidden;
+      transform: translateY(8px);
+      opacity:0;
+      animation: pop .55s cubic-bezier(.2,.9,.2,1) forwards;
+    }
+    @keyframes pop{
+      to{ transform: translateY(0); opacity:1; }
+    }
+
+    .side{
+      padding:16px;
+      display:flex;
+      flex-direction:column;
+      gap:12px;
+    }
+
+    .brand{
+      display:flex;
+      align-items:center;
+      gap:12px;
+      padding-bottom:10px;
+      border-bottom:1px solid var(--line);
+    }
+    .logo{
+      width:40px; height:40px;
+      border-radius: 14px;
+      border:1px solid #ffffff2a;
+      background:
+        radial-gradient(circle at 35% 30%, #fff 0%, #fff0 45%),
+        radial-gradient(circle at 70% 75%, #fff6 0%, #fff0 55%),
+        linear-gradient(145deg, #111, #000);
+      box-shadow: 0 0 0 6px #ffffff05, 0 0 25px #ffffff14;
+      position:relative;
+      overflow:hidden;
+    }
+    .logo::after{
+      content:"";
+      position:absolute; inset:-40%;
+      background: linear-gradient(90deg, transparent, #ffffff22, transparent);
+      transform: rotate(25deg);
+      animation: sheen 2.8s ease-in-out infinite;
+    }
+    @keyframes sheen{
+      0%{ transform: translateX(-40%) rotate(25deg); }
+      50%{ transform: translateX(40%) rotate(25deg); }
+      100%{ transform: translateX(140%) rotate(25deg); }
+    }
+
+    .brand h1{
+      font-size:16px;
+      margin:0;
+      letter-spacing:.5px;
+      text-transform:uppercase;
+    }
+    .brand p{
+      margin:2px 0 0;
+      font-size:12px;
+      color:var(--muted);
+    }
+
+    label{
+      font-size:12px;
+      color:var(--muted);
+      display:block;
+      margin-bottom:6px;
+    }
+    input, select{
+      width:100%;
+      background: #07090c;
+      border:1px solid var(--line);
+      color:var(--text);
+      border-radius: 14px;
+      padding:10px 12px;
+      outline:none;
+      transition: .2s ease;
+    }
+    input:focus, select:focus{
+      border-color:#ffffff55;
+      box-shadow: 0 0 0 4px #ffffff12;
+    }
+
+    .row{ display:flex; gap:10px; }
+    .row > div{ flex:1; }
+
+    .btn{
+      border:1px solid #ffffff2a;
+      background: linear-gradient(180deg, #111, #060607);
+      color: var(--text);
+      padding:10px 12px;
+      border-radius: 14px;
+      cursor:pointer;
+      transition: transform .08s ease, box-shadow .2s ease, border-color .2s ease;
+      user-select:none;
+    }
+    .btn:hover{
+      border-color:#ffffff55;
+      box-shadow: 0 0 0 4px #ffffff10;
+    }
+    .btn:active{ transform: translateY(1px) scale(.99); }
+    .btn.secondary{
+      background: #0a0c10;
+      border-color: var(--line);
+      color: var(--muted);
+    }
+
+    .hint{
+      font-size:12px;
+      color:var(--muted);
+      line-height:1.35;
+    }
+    .pill{
+      display:inline-flex;
+      align-items:center;
+      gap:8px;
+      padding:8px 10px;
+      border:1px solid var(--line);
+      border-radius: 999px;
+      background: #07090c;
+      color: var(--muted);
+      font-size:12px;
+    }
+    .dot{
+      width:8px; height:8px;
+      border-radius:999px;
+      background:#777;
+      box-shadow: 0 0 0 4px #ffffff08;
+    }
+    .dot.ok{ background:#fff; }
+    .dot.bad{ background:#777; }
+
+    /* chat */
+    .chat{
+      display:flex;
+      flex-direction:column;
+      height: 640px;
+    }
+    @media (max-width: 860px){
+      .chat{ height: 68vh; }
+    }
+
+    .chatHeader{
+      padding:14px 16px;
+      border-bottom:1px solid var(--line);
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      background: linear-gradient(180deg, #0b0d10, #07080a);
+    }
+    .chatHeader .title{
+      display:flex; align-items:center; gap:10px;
+    }
+    .chatHeader .title strong{
+      font-size:14px; letter-spacing:.3px;
+    }
+    .chatHeader .title span{
+      font-size:12px; color:var(--muted);
+    }
+
+    .messages{
+      padding:16px;
+      flex:1;
+      overflow:auto;
+      display:flex;
+      flex-direction:column;
+      gap:12px;
+      scroll-behavior:smooth;
+    }
+
+    .bubble{
+      max-width: 78%;
+      border-radius: 18px;
+      padding:10px 12px;
+      border:1px solid var(--line);
+      background: #090b0f;
+      color:var(--text);
+      box-shadow: 0 10px 30px rgba(0,0,0,.25);
+      position:relative;
+      animation: in .22s ease-out;
+      white-space:pre-wrap;
+      word-wrap:break-word;
+      line-height:1.35;
+    }
+    @keyframes in{
+      from{ transform: translateY(6px); opacity:0; }
+      to{ transform: translateY(0); opacity:1; }
+    }
+
+    .bubble.user{
+      margin-left:auto;
+      background: linear-gradient(180deg, #111, #07080a);
+      border-color:#ffffff22;
+    }
+    .bubble.ai{
+      margin-right:auto;
+      background: linear-gradient(180deg, #0a0c10, #07080a);
+    }
+    .meta{
+      margin-top:6px;
+      font-size:11px;
+      color:var(--muted);
+      display:flex;
+      gap:10px;
+      justify-content:flex-end;
+    }
+
+    .composer{
+      padding:12px;
+      border-top:1px solid var(--line);
+      background: linear-gradient(180deg, #07080a, #060607);
+      display:flex;
+      gap:10px;
+      align-items:flex-end;
+    }
+
+    textarea{
+      flex:1;
+      min-height: 48px;
+      max-height: 160px;
+      resize:none;
+      padding:10px 12px;
+      border-radius: 16px;
+      border:1px solid var(--line);
+      outline:none;
+      background:#07090c;
+      color:var(--text);
+      transition:.2s ease;
+    }
+    textarea:focus{
+      border-color:#ffffff55;
+      box-shadow: 0 0 0 4px #ffffff12;
+    }
+
+    .send{
+      min-width: 120px;
+      height: 48px;
+      border-radius: 16px;
+      font-weight:600;
+      letter-spacing:.3px;
+      position:relative;
+      overflow:hidden;
+    }
+    .send::after{
+      content:"";
+      position:absolute;
+      inset:-30%;
+      background: linear-gradient(90deg, transparent, #ffffff1c, transparent);
+      transform: translateX(-60%);
+      transition:.35s ease;
+    }
+    .send:hover::after{
+      transform: translateX(60%);
+    }
+
+    .typing{
+      display:inline-flex;
+      align-items:center;
+      gap:6px;
+      color:var(--muted);
+      font-size:12px;
+      padding:8px 10px;
+      border:1px dashed var(--line);
+      border-radius: 999px;
+      width:fit-content;
+      animation: in .22s ease-out;
+    }
+    .typing i{
+      width:6px;height:6px;border-radius:99px;background:#aaa;
+      display:inline-block;
+      animation: bounce 1s infinite ease-in-out;
+    }
+    .typing i:nth-child(2){ animation-delay:.12s; }
+    .typing i:nth-child(3){ animation-delay:.24s; }
+    @keyframes bounce{
+      0%,100%{ transform: translateY(0); opacity:.55; }
+      50%{ transform: translateY(-4px); opacity:1; }
+    }
+
+    .toast{
+      position:fixed;
+      bottom:18px; left:50%;
+      transform: translateX(-50%);
+      background:#0b0d10;
+      border:1px solid var(--line);
+      color:var(--text);
+      padding:10px 12px;
+      border-radius: 999px;
+      box-shadow: var(--shadow);
+      opacity:0;
+      pointer-events:none;
+      transition:.25s ease;
+      font-size:12px;
+    }
+    .toast.show{ opacity:1; }
+  </style>
+</head>
+
+<body>
+  <div class="app">
+    <!-- left: settings -->
+    <div class="card side">
+      <div class="brand">
+        <div class="logo" aria-hidden="true"></div>
+        <div>
+          <h1>NovaAI</h1>
+          <p>Black & white, clean, and a little chaotic.</p>
+        </div>
+      </div>
+
+      <div>
+        <label>Groq API Key (stored locally)</label>
+        <input id="apiKey" type="password" placeholder="gsk_..." autocomplete="off" />
+        <div class="hint" style="margin-top:8px">
+          Tip: Don’t publish this key in a public website. If you do, it’ll get yoinked in 0.2 seconds.
+        </div>
+      </div>
+
+      <div class="row">
+        <div>
+          <label>Model</label>
+          <select id="model">
+            <option value="llama-3.1-8b-instant" selected>llama-3.1-8b-instant</option>
+            <option value="llama-3.1-70b-versatile">llama-3.1-70b-versatile</option>
+            <option value="mixtral-8x7b-32768">mixtral-8x7b-32768</option>
+          </select>
+        </div>
+        <div>
+          <label>Temperature</label>
+          <input id="temp" type="number" min="0" max="2" step="0.1" value="0.7" />
+        </div>
+      </div>
+
+      <div class="row">
+        <button class="btn secondary" id="clearChat">Clear chat</button>
+        <button class="btn" id="saveKey">Save key</button>
+      </div>
+
+      <div class="pill" id="statusPill">
+        <span class="dot bad" id="statusDot"></span>
+        <span id="statusText">Key not saved</span>
+      </div>
+
+      <div class="hint">
+        NovaAI rules:
+        <br/>• Funny personality
+        <br/>• Helps with school, general tasks, and gaming
+        <br/>• Doesn’t freak out when you type a whole novel (but may roast you lightly)
+      </div>
+    </div>
+
+    <!-- right: chat -->
+    <div class="card chat">
+      <div class="chatHeader">
+        <div class="title">
+          <strong>Chat</strong>
+          <span id="subtitle">NovaAI is standing by.</span>
+        </div>
+        <button class="btn secondary" id="demoBtn">Demo message</button>
+      </div>
+
+      <div class="messages" id="messages"></div>
+
+      <div class="composer">
+        <textarea id="input" placeholder="Ask NovaAI something..." rows="1"></textarea>
+        <button class="btn send" id="sendBtn">Send</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <script>
+    // --- NovaAI "system rules" (better than stuffing rules inside user prompt) ---
+    const SYSTEM_PROMPT =
+      "You are named NovaAI, an AI assistant with a funny personality. " +
+      "You help students with school tasks or with general tasks or gaming. " +
+      "Be helpful, not cringe. Keep it clear and friendly.";
+
+    const ENDPOINT = "https://api.groq.com/openai/v1/chat/completions";
+
+    const el = (id) => document.getElementById(id);
+    const apiKeyEl = el("apiKey");
+    const modelEl = el("model");
+    const tempEl = el("temp");
+    const messagesEl = el("messages");
+    const inputEl = el("input");
+    const sendBtn = el("sendBtn");
+    const saveKeyBtn = el("saveKey");
+    const clearChatBtn = el("clearChat");
+    const demoBtn = el("demoBtn");
+    const statusDot = el("statusDot");
+    const statusText = el("statusText");
+    const subtitle = el("subtitle");
+    const toast = el("toast");
+
+    // basic chat memory
+    let chat = [
+      { role: "assistant", content: "Yo. I’m **NovaAI** 😈\nAsk me anything — school, life, gaming, whatever." }
+    ];
+
+    function showToast(msg){
+      toast.textContent = msg;
+      toast.classList.add("show");
+      setTimeout(() => toast.classList.remove("show"), 1600);
+    }
+
+    function setStatus(ok, text){
+      statusDot.className = "dot " + (ok ? "ok" : "bad");
+      statusText.textContent = text;
+    }
+
+    function render(){
+      messagesEl.innerHTML = "";
+      for (const m of chat){
+        const wrap = document.createElement("div");
+        wrap.className = "bubble " + (m.role === "user" ? "user" : "ai");
+
+        // tiny markdown-ish bold
+        const safe = (m.content ?? "")
+          .replaceAll("&", "&amp;")
+          .replaceAll("<", "&lt;")
+          .replaceAll(">", "&gt;")
+          .replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>");
+
+        wrap.innerHTML = safe;
+
+        const meta = document.createElement("div");
+        meta.className = "meta";
+        meta.textContent = (m.role === "user") ? "You" : "NovaAI";
+        wrap.appendChild(meta);
+
+        messagesEl.appendChild(wrap);
+      }
+      messagesEl.scrollTop = messagesEl.scrollHeight;
+    }
+
+    function addTyping(){
+      const t = document.createElement("div");
+      t.className = "typing";
+      t.id = "typing";
+      t.innerHTML = `<span>NovaAI is thinking</span><i></i><i></i><i></i>`;
+      messagesEl.appendChild(t);
+      messagesEl.scrollTop = messagesEl.scrollHeight;
+    }
+    function removeTyping(){
+      const t = el("typing");
+      if (t) t.remove();
+    }
+
+    function autoGrow(){
+      inputEl.style.height = "auto";
+      inputEl.style.height = Math.min(inputEl.scrollHeight, 160) + "px";
+    }
+
+    async function askGroq(userText){
+      const apiKey = apiKeyEl.value.trim();
+      if (!apiKey){
+        showToast("Add your Groq API key first.");
+        throw new Error("Missing API key");
+      }
+
+      // Convert our chat history into API messages, plus system prompt
+      const apiMessages = [
+        { role: "system", content: SYSTEM_PROMPT },
+        ...chat
+          .filter(m => m.role === "user" || m.role === "assistant")
+          .map(m => ({ role: m.role, content: m.content }))
+      ];
+
+      const payload = {
+        model: modelEl.value,
+        messages: apiMessages.concat([{ role: "user", content: userText }]),
+        max_tokens: 250,
+        temperature: Number(tempEl.value || 0.7)
+      };
+
+      const res = await fetch(ENDPOINT, {
+        method: "POST",
+        headers: {
+          "Authorization": "Bearer " + apiKey,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify(payload)
+      });
+
+      const data = await res.json();
+
+      if (!res.ok || data.error){
+        const msg = data?.error?.message || ("HTTP " + res.status);
+        // match your python behavior
+        if ((msg + "").toLowerCase().includes("too large") || (msg + "").toLowerCase().includes("token")){
+          return "Whoa calm down!";
+        }
+        return "Error.";
+      }
+
+      return data.choices?.[0]?.message?.content?.trim() || "Error.";
+    }
+
+    async function send(){
+      const text = inputEl.value.trim();
+      if (!text) return;
+
+      inputEl.value = "";
+      autoGrow();
+
+      chat.push({ role:"user", content:text });
+      render();
+
+      sendBtn.disabled = true;
+      subtitle.textContent = "Talking to Groq...";
+      addTyping();
+
+      try{
+        const reply = await askGroq(text);
+        removeTyping();
+        chat.push({ role:"assistant", content: reply });
+        render();
+      }catch(e){
+        removeTyping();
+        chat.push({ role:"assistant", content: "Error." });
+        render();
+      }finally{
+        sendBtn.disabled = false;
+        subtitle.textContent = "NovaAI is standing by.";
+      }
+    }
+
+    // --- events ---
+    inputEl.addEventListener("input", autoGrow);
+
+    inputEl.addEventListener("keydown", (e) => {
+      if (e.key === "Enter" && !e.shiftKey){
+        e.preventDefault();
+        send();
+      }
+    });
+
+    sendBtn.addEventListener("click", send);
+
+    saveKeyBtn.addEventListener("click", () => {
+      const k = apiKeyEl.value.trim();
+      if (!k) return showToast("No key to save.");
+      localStorage.setItem("NOVA_GROQ_KEY", k);
+      setStatus(true, "Key saved locally");
+      showToast("Saved.");
+    });
+
+    clearChatBtn.addEventListener("click", () => {
+      chat = [{ role:"assistant", content:"Reset ✅\nWhat are we doing now?" }];
+      render();
+      showToast("Chat cleared.");
+    });
+
+    demoBtn.addEventListener("click", () => {
+      inputEl.value = "Help me write a short paragraph about why homework matters, but make it funny.";
+      autoGrow();
+      inputEl.focus();
+    });
+
+    // --- init ---
+    const saved = localStorage.getItem("NOVA_GROQ_KEY");
+    if (saved){
+      apiKeyEl.value = saved;
+      setStatus(true, "Key loaded from local storage");
+    } else {
+      setStatus(false, "Key not saved");
+    }
+    render();
+    autoGrow();
+  </script>
+</body>
+</html>
